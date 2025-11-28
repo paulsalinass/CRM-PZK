@@ -1,0 +1,632 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>CRM - PK &middot; Leads</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Fuente + CSS -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/app.css?v=13" />
+    <script type="module" src="js/theme-toggle.js"></script>
+
+    <!-- Libs que usa la p&aacute;gina -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"
+      defer
+    ></script>
+
+    <!-- Prefetch / conexiones -->
+    <link rel="prefetch" href="metrics.html" />
+    <link rel="preconnect" href="https://docs.google.com" />
+    <link rel="preconnect" href="https://script.google.com" />
+
+    <!-- Estilos locales SOLO para el modal del formulario -->
+    <style>
+      .lead-dialog {
+        width: min(780px, 94vw);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 16px;
+        animation: fadeUp 0.15s ease-out;
+      }
+      .lead-dialog h3 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .lead-dialog .close-x {
+        margin-left: auto;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .lead-form {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(200px, 1fr));
+      }
+      .lead-form .full {
+        grid-column: 1/-1;
+      }
+      .lead-form label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .lead-form input,
+      .lead-form textarea,
+      .lead-form select {
+        width: 100%;
+        background: var(--panel-2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 12px;
+        outline: none;
+        font-size: 14px;
+      }
+      .lead-form textarea {
+        resize: vertical;
+        min-height: 72px;
+      }
+      .lead-actions {
+        margin-top: 8px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .lead-msg {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .req::after {
+        content: " *";
+        color: #f59e0b;
+        font-weight: 900;
+      }
+      .hidden {
+        display: none !important;
+      }
+    </style>
+
+    <!-- Boot script anti-flash: ahora tambien maneja .light -->
+    <script>
+      (function () {
+        try {
+          var saved =
+            localStorage.getItem("crm_theme") ||
+            sessionStorage.getItem("theme");
+          var prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var theme = saved || (prefersDark ? "dark" : "light");
+          var root = document.documentElement;
+          root.setAttribute("data-theme", theme);
+          root.classList.toggle("dark", theme === "dark");
+          root.classList.toggle("light", theme === "light"); // <-- clave para tu CSS (:root.light ...)
+          sessionStorage.setItem("theme", theme);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+
+  <body data-page="leads">
+    <!-- Overlay de transicion -->
+    <div id="pageTrans" class="page-trans" aria-hidden="true"></div>
+
+    <div class="app-shell">
+      <header class="top-nav" id="crmTopNav">
+        <div class="top-nav__bar">
+          <div class="top-nav__brand">
+            <span class="brand-mark">PK</span>
+            <span class="brand-name">CRM - PK</span>
+          </div>
+          <div class="top-nav__actions">
+            <theme-toggle
+              id="themeToggleMobile"
+              class="top-nav__theme-toggle"
+              target="html"
+              storage-key="crm_theme"
+              aria-label="Cambiar modo de color"
+              style="
+                --tt-width: 70px;
+                --tt-height: 32px;
+                --tt-shadow: none;
+                --tt-thumb-shadow: none;
+              "
+            ></theme-toggle>
+            <button
+              type="button"
+              id="topNavToggle"
+              class="top-nav__toggle"
+              aria-expanded="false"
+              aria-label="Abrir men&uacute;"
+              data-open="false"
+            >
+              <span class="top-nav__toggle-line"></span>
+              <span class="top-nav__toggle-line"></span>
+              <span class="top-nav__toggle-line"></span>
+            </button>
+          </div>
+        </div>
+        <div class="top-nav__menu" id="topNavMenu" data-open="false">
+          <nav class="top-nav__links" aria-label="Navegaci&oacute;n principal">
+            <a href="index.html" class="top-nav__link" data-page="leads">
+              <span class="top-nav__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="9" cy="7" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+                  <path d="M20 21v-2c0-1.48-.806-2.773-2-3.465M15 3.1a3.5 3.5 0 0 1 0 6.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="top-nav__label">Leads</span>
+            </a>
+            <a href="metrics.html" class="top-nav__link" data-page="metrics">
+              <span class="top-nav__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 3a9 9 0 1 1-6.364 2.636" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 3v9l6.364 6.364" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="top-nav__label">M&eacute;tricas</span>
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      <aside class="sidebar" id="crmSidebar" data-collapsed="false">
+        <div class="sidebar-brand">
+          <button
+            type="button"
+            id="sidebarCollapse"
+            class="sidebar-collapse"
+            aria-label="Contraer men&uacute;"
+            aria-expanded="true"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M15 19l-6-7 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <span class="brand-mark">PK</span>
+          <span class="brand-name">CRM - PK</span>
+        </div>
+        <nav class="sidebar-nav" aria-label="Navegaci&oacute;n principal">
+          <a href="index.html" class="sidebar-link active" data-page="leads" data-label="Leads" title="Leads">
+            <span class="icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="9" cy="7" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M20 21v-2c0-1.48-.806-2.773-2-3.465M15 3.1a3.5 3.5 0 0 1 0 6.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <span class="label">Leads</span>
+          </a>
+          <a href="metrics.html" class="sidebar-link" data-page="metrics" data-label="M&eacute;tricas" title="M&eacute;tricas">
+            <span class="icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3a9 9 0 1 1-6.364 2.636" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 3v9l6.364 6.364" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="label">M&eacute;tricas</span>
+          </a>
+        </nav>
+        <div class="sidebar-bottom">
+          <theme-toggle
+            id="themeToggle"
+            class="sidebar-theme-toggle"
+            target="html"
+            storage-key="crm_theme"
+            aria-label="Cambiar modo de color"
+            style="
+              --tt-width: 76px;
+              --tt-height: 34px;
+              --tt-shadow: none;
+              --tt-thumb-shadow: none;
+            "
+          ></theme-toggle>
+        </div>
+      </aside>
+
+      <div class="app-main">
+        <div class="content">
+      <!-- KPIs -->
+      <div class="kpis">
+        <div class="kpi">
+          <div class="label">Total de registros</div>
+          <div class="value" id="kpiTotal">&mdash;</div>
+        </div>
+        <div class="kpi nuevos">
+          <div class="label">Usuarios nuevos</div>
+          <div class="value" id="kpiNuevos">&mdash;</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Gestionados</div>
+          <div class="value" id="kpiGestionados">&mdash;</div>
+        </div>
+      </div>
+
+      <!-- TOOLBAR -->
+      <div class="toolbar" id="toolbar">
+        <div class="tool-left">
+          <div class="search">
+            <i class="ico"></i
+            ><input
+              type="text"
+              id="fSearch"
+              placeholder="Escribe para filtrar..."
+            />
+          </div>
+        </div>
+
+        <div class="tool-right">
+          <div class="selects">
+            <div class="select-wrap sw-canal">
+              <span class="prefix">Canal</span
+              ><select id="fCanal"></select
+              ><i class="chev"></i>
+            </div>
+            <div class="select-wrap sw-camp">
+              <span class="prefix">Campa&ntilde;a</span
+              ><select id="fCamp"></select
+              ><i class="chev"></i>
+            </div>
+            <div class="select-wrap sw-int">
+              <span class="prefix">Inter&eacute;s</span
+              ><select id="fInteres"></select
+              ><i class="chev"></i>
+            </div>
+          </div>
+
+          <div class="actions">
+            <span
+              class="range-pill small"
+              id="tbRangePill"
+              title="Rango aplicado"
+              style="display: none"
+            ></span>
+            <button
+              class="icon-btn big"
+              id="toolbarRangeBtn"
+              title="Rango de fechas"
+              aria-label="Rango de fechas"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </button>
+            <button
+              class="icon-btn clear-btn"
+              id="clearFiltersBtn"
+              title="Limpiar filtros"
+              aria-label="Limpiar filtros"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4 4h16l-6.5 8v4.5l-3.5 3v-7.5Z"
+                ></path>
+                <circle cx="17" cy="17" r="3.5"></circle>
+                <path d="m15.5 15.5 3 3m0-3-3 3"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="card">
+        <h3 class="list-head">
+          <span class="list-title">Registros</span>
+          <span class="chip" id="chipResumen">Mostrando 0 de 0 leads</span>
+          <span class="chip" id="chipFilas" style="display: none">0 filas</span>
+          <span class="chip" id="chipMostrando" style="display: none"
+            >Mostrando 0</span
+          >
+          <span class="push-right"></span>
+          <span class="list-actions">
+            <button id="addLeadBtn" title="Registrar lead manualmente">
+              Registrar lead +
+            </button>
+            <button id="refreshBtn">Actualizar datos &#8635;</button>
+          </span>
+        </h3>
+
+        <div id="hostWarn" class="warn" style="display: none">
+          Si abriste este archivo con <code>file://</code>, algunos navegadores
+          bloquean CORS. S&iacute;rvelo por https.
+        </div>
+
+        <div class="table-wrap">
+          <table id="dataTable">
+            <thead>
+              <tr>
+                <th>Hora de registro</th>
+                <th>Nombres</th>
+                <th>Celular</th>
+                <th>DNI</th>
+                <th>Canal</th>
+                <th>Campa&ntilde;a</th>
+                <th>Inter&eacute;s</th>
+                <th>Registro</th>
+                <th>Estado</th>
+                <th>CRM</th>
+                <th>Asesor</th>
+                <th>Comentario Ventas</th>
+                <th>Comentario Leads</th>
+                <th>Comentario de Sistema</th>
+                <!-- NUEVA -->
+              </tr>
+            </thead>
+
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <div class="footer-note" id="lastUpdate">Actualizado: --</div>
+          <div class="table-actions">
+            <button id="btnVerMas" class="ghost">Ver m&aacute;s (+10)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL RANGO ===== -->
+    <div class="modal" id="tbModal">
+      <div
+        class="range-pop open"
+        id="tbRangePop"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="rp-side">
+          <button data-preset="today">Hoy</button
+          ><button data-preset="yesterday">Ayer</button
+          ><button data-preset="thisweek">Esta semana</button>
+          <button data-preset="lastweek">Semana anterior</button
+          ><button data-preset="thismonth">Este mes</button
+          ><button data-preset="lastmonth">Mes anterior</button>
+        </div>
+        <div class="rp-body">
+          <div class="rp-head">
+            <strong id="tbRpTitle"></strong>
+            <div class="rp-nav">
+              <button id="tbRpPrev">&lsaquo;</button><button id="tbRpNext">&rsaquo;</button>
+            </div>
+          </div>
+          <div class="cal" id="tbCalHead"></div>
+          <div class="cal" id="tbCalGrid"></div>
+          <div class="rp-bottom">
+            <input class="mini" type="date" id="tbRpFrom" /><span>&mdash;</span
+            ><input class="mini" type="date" id="tbRpTo" />
+          </div>
+          <div class="rp-actions">
+            <button class="mini" id="tbRpCancel">Cancelar</button
+            ><button class="mini apply-disabled" id="tbRpApply" disabled>
+              Aplicar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: Registro manual de lead ===== -->
+    <div class="modal" id="leadModal" aria-hidden="true">
+      <div
+        class="lead-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="leadTitle"
+      >
+        <h3 id="leadTitle">
+          Registrar lead
+          <button
+            class="close-x"
+            type="button"
+            id="leadClose"
+            aria-label="Cerrar"
+          >
+            &times;
+          </button>
+        </h3>
+        <!-- (form) -->
+        <form id="leadForm" class="lead-form" novalidate>
+          <div class="full">
+            <label class="req" for="lfNombre">Nombre Completo</label
+            ><input
+              id="lfNombre"
+              name="nombreCompleto"
+              type="text"
+              required
+              placeholder="Ej: Juan P&eacute;rez"
+            />
+          </div>
+          <div>
+            <label class="req" for="lfDni">DNI</label
+            ><input
+              id="lfDni"
+              name="dni"
+              type="text"
+              required
+              placeholder="Ej: 12345678"
+            />
+          </div>
+          <div>
+            <label class="req" for="lfCel">Celular</label
+            ><input
+              id="lfCel"
+              name="celular"
+              type="tel"
+              required
+              placeholder="Ej: 999999999"
+            />
+          </div>
+          <div>
+            <label for="lfCorreo">Correo</label
+            ><input
+              id="lfCorreo"
+              name="correo"
+              type="email"
+              placeholder="nombre@correo.com"
+            />
+          </div>
+          <div>
+            <label for="lfTiempoCompra">Tipo de compra</label>
+            <select id="lfTiempoCompra" name="tiempoCompra">
+              <option value="">&mdash; Seleccionar &mdash;</option>
+              <option value="inmediata">inmediata</option>
+              <option value="a_futuro">a_futuro</option>
+            </select>
+          </div>
+          <div>
+            <label for="lfMontoSelect">Monto de Inicial</label>
+            <select id="lfMontoSelect" name="montoInicialSel">
+              <option value="">&mdash; Seleccionar &mdash;</option>
+              <option value="3000">S/.3,000</option>
+              <option value="5000">S/.5,000</option>
+              <option value="10000">S/.10,000</option>
+              <option value="al_contado">al_contado</option>
+              <option value="otro">Otro (escribir)</option>
+            </select>
+          </div>
+          <div id="lfMontoOtroWrap" class="hidden">
+            <label for="lfMonto">Especificar monto (S/.)</label
+            ><input
+              id="lfMonto"
+              name="montoInicial"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              placeholder="Ej: 1,200.00"
+            />
+          </div>
+          <div>
+            <label for="lfAnuncio">Anuncio</label
+            ><input
+              id="lfAnuncio"
+              name="anuncio"
+              type="text"
+              placeholder="Ej: FB - Campa&ntilde;a X"
+            />
+          </div>
+          <div>
+            <label for="lfTipoRegistro">Tipo de registro</label>
+            <select id="lfTipoRegistro" name="tipoRegistro">
+              <option value="manual" selected>manual</option>
+              <option value="externo">externo</option>
+              <option value="visita">visita</option>
+              <option value="referido">referido</option>
+            </select>
+          </div>
+          <div class="full">
+            <label for="lfComentario">Comentario</label
+            ><textarea
+              id="lfComentario"
+              name="comentario"
+              placeholder="Notas adicionales..."
+            ></textarea>
+          </div>
+          <div class="lead-actions full">
+            <button type="button" class="mini" id="leadCancel">Cancelar</button
+            ><button type="submit" id="leadSubmit">Registrar</button>
+          </div>
+          <div class="lead-msg full" id="leadMsg" aria-live="polite"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+      </div>
+    </div>
+  </div>
+
+    <!-- Scripts -->
+    <script src="js/common.js" defer></script>
+    <script src="js/transition.js" defer></script>
+    <script src="js/leads.js" defer></script>
+    <script src="js/manual-lead.js" defer></script>
+
+    <!-- Actualiza el chip resumen a partir de los chips existentes (compat) -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const chipRes = document.getElementById("chipResumen");
+        const chipMost = document.getElementById("chipMostrando");
+        const chipFilas = document.getElementById("chipFilas");
+        const extractNum = (el) =>
+          (el?.textContent.match(/\d[\d.,]*/) || ["0"])[0];
+        const render = () => {
+          chipRes.textContent = `Mostrando ${extractNum(
+            chipMost
+          )} de ${extractNum(chipFilas)} leads`;
+        };
+        render();
+        const obs = new MutationObserver(render);
+        [chipMost, chipFilas].forEach(
+          (el) =>
+            el &&
+            obs.observe(el, {
+              childList: true,
+              characterData: true,
+              subtree: true,
+            })
+        );
+      });
+    </script>
+    <!-- OJO: quitamos el <script type="module" src="theme-toggle.js"></script> duplicado -->
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+

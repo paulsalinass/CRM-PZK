@@ -1,0 +1,425 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>CRM - PK &middot; M&eacute;tricas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Fuente + estilos -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/app.css?v=12" />
+    <script type="module" src="js/theme-toggle.js"></script>
+
+
+
+
+    <!-- Libs que usa la p&aacute;gina de M&eacute;tricas -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+      defer
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"
+      defer
+    ></script>
+
+    <link rel="prefetch" href="index.html" />
+    <link rel="preconnect" href="https://docs.google.com" />
+
+    <!-- Boot script anti-flash: aplica el tema guardado antes de pintar -->
+    <script>
+      (function () {
+        try {
+          var saved =
+            localStorage.getItem("crm_theme") ||
+            sessionStorage.getItem("theme");
+          var prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var theme = saved || (prefersDark ? "dark" : "light");
+          var root = document.documentElement;
+          root.setAttribute("data-theme", theme);
+          root.classList.toggle("dark", theme === "dark");
+          root.classList.toggle("light", theme === "light"); // tu CSS usa :root.light
+          sessionStorage.setItem("theme", theme);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+
+  <body data-page="metrics">
+    <div id="pageTrans" class="page-trans" aria-hidden="true"></div>
+
+    <div class="app-shell">
+      <header class="top-nav" id="crmTopNav">
+        <div class="top-nav__bar">
+          <div class="top-nav__brand">
+            <span class="brand-mark">PK</span>
+            <span class="brand-name">CRM - PK</span>
+          </div>
+          <div class="top-nav__actions">
+            <theme-toggle
+              id="themeToggleMobile"
+              class="top-nav__theme-toggle"
+              target="html"
+              storage-key="crm_theme"
+              aria-label="Cambiar modo de color"
+              style="
+                --tt-width: 70px;
+                --tt-height: 32px;
+                --tt-shadow: none;
+                --tt-thumb-shadow: none;
+              "
+            ></theme-toggle>
+            <button
+              type="button"
+              id="topNavToggle"
+              class="top-nav__toggle"
+              aria-expanded="false"
+              aria-label="Abrir men&uacute;"
+              data-open="false"
+            >
+              <span class="top-nav__toggle-line"></span>
+              <span class="top-nav__toggle-line"></span>
+              <span class="top-nav__toggle-line"></span>
+            </button>
+          </div>
+        </div>
+        <div class="top-nav__menu" id="topNavMenu" data-open="false">
+          <nav class="top-nav__links" aria-label="Navegaci&oacute;n principal">
+            <a href="index.html" class="top-nav__link" data-page="leads">
+              <span class="top-nav__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="9" cy="7" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+                  <path d="M20 21v-2c0-1.48-.806-2.773-2-3.465M15 3.1a3.5 3.5 0 0 1 0 6.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="top-nav__label">Leads</span>
+            </a>
+            <a href="metrics.html" class="top-nav__link" data-page="metrics">
+              <span class="top-nav__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 3a9 9 0 1 1-6.364 2.636" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 3v9l6.364 6.364" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="top-nav__label">M&eacute;tricas</span>
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      <aside class="sidebar" id="crmSidebar" data-collapsed="false">
+        <div class="sidebar-brand">
+          <button
+            type="button"
+            id="sidebarCollapse"
+            class="sidebar-collapse"
+            aria-label="Contraer men&uacute;"
+            aria-expanded="true"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M15 19l-6-7 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <span class="brand-mark">PK</span>
+          <span class="brand-name">CRM - PK</span>
+        </div>
+        <nav class="sidebar-nav" aria-label="Navegaci&oacute;n principal">
+          <a href="index.html" class="sidebar-link" data-page="leads" data-label="Leads" title="Leads">
+            <span class="icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="9" cy="7" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M20 21v-2c0-1.48-.806-2.773-2-3.465M15 3.1a3.5 3.5 0 0 1 0 6.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <span class="label">Leads</span>
+          </a>
+          <a href="metrics.html" class="sidebar-link active" data-page="metrics" data-label="M&eacute;tricas" title="M&eacute;tricas">
+            <span class="icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3a9 9 0 1 1-6.364 2.636" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 3v9l6.364 6.364" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="label">M&eacute;tricas</span>
+          </a>
+        </nav>
+        <div class="sidebar-bottom">
+          <theme-toggle
+            id="themeToggle"
+            class="sidebar-theme-toggle"
+            target="html"
+            storage-key="crm_theme"
+            aria-label="Cambiar modo de color"
+            style="
+              --tt-width: 76px;
+              --tt-height: 34px;
+              --tt-shadow: none;
+              --tt-thumb-shadow: none;
+            "
+          ></theme-toggle>
+        </div>
+      </aside>
+
+      <div class="app-main">
+
+        <div class="content">
+      <!-- M&Eacute;TRICAS -->
+      <div class="charts">
+
+        <!-- BARRA DE CONTROLES GLOBALES PARA GRUPO DE DONUTS -->
+        <div class="group-controls" id="group-controls">
+          <div class="group-head">
+            <h3>M&eacute;tricas principales</h3>
+            <span class="range-pill" id="groupRangePill"></span>
+            <div class="group-tools">
+              <button class="group-btn seg active" id="groupCount">
+                <span class="group-btn__icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" />
+                  </svg>
+                </span>
+                <span class="group-btn__label">Cantidad</span>
+              </button>
+              <button class="group-btn seg" id="groupPercent">
+                <span class="group-btn__icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M17.25 6.75a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM9.75 17.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M18 18L6 6" />
+                  </svg>
+                </span>
+                <span class="group-btn__label">Porcentaje</span>
+              </button>
+
+              <!-- Rango: reemplazado por icono de calendario (accesible) -->
+              <button class="group-btn-icon icon-btn" id="groupRangeOpen" aria-label="Seleccionar rango">
+                <!-- simple calendar SVG (tama&ntilde;o y color heredan del bot&oacute;n) -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M6.75 3v2.25m10.5-2.25V5.25m-12 3h13.5M5.25 21h13.5a1.5 1.5 0 001.5-1.5V7.5a1.5 1.5 0 00-1.5-1.5H5.25A1.5 1.5 0 003.75 7.5v12a1.5 1.5 0 001.5 1.5z" />
+                </svg>
+              </button>
+
+              <button class="group-btn" id="groupRefresh">
+                <span class="group-btn__icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M16.023 9.348h4.977V4.37m0 4.977-3.308-3.308A8.25 8.25 0 1 0 12 20.25" />
+                  </svg>
+                </span>
+                <span class="group-btn__label">Actualizar</span>
+              </button>
+              <button class="group-btn clear-btn" id="groupClear">
+                <span class="group-btn__icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M3 5.25h18M4.5 5.25 9 12v5.378a1.5 1.5 0 00.44 1.062l2.25 2.25a.75.75 0 001.28-.53V12l4.5-6.75" />
+                  </svg>
+                </span>
+                <span class="group-btn__label">Limpiar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal de rango para el grupo de donuts (independiente del Historial) -->
+        <div class="range-pop" id="rangePopGroup" role="dialog" aria-modal="true" hidden>
+          <div class="rp-side">
+            <button data-preset="today">Hoy</button>
+            <button data-preset="yesterday">Ayer</button>
+            <button data-preset="thisweek">Esta semana</button>
+            <button data-preset="lastweek">Semana anterior</button>
+            <button data-preset="thismonth">Este mes</button>
+            <button data-preset="lastmonth">Mes anterior</button>
+          </div>
+          <div class="rp-body">
+            <div class="rp-head">
+              <strong id="rpTitleGroup"></strong>
+              <div class="rp-nav">
+                <button id="rpPrevGroup">&lsaquo;</button><button id="rpNextGroup">&rsaquo;</button>
+              </div>
+            </div>
+            <div class="cal" id="calHeadGroup"></div>
+            <div class="cal" id="calGridGroup"></div>
+            <div class="rp-bottom">
+              <input class="mini" type="date" id="rpFromGroup" />
+              <span>&mdash;</span>
+              <input class="mini" type="date" id="rpToGroup" />
+            </div>
+            <div class="rp-actions">
+              <button class="mini" id="rpCancelGroup">Cancelar</button>
+              <button class="mini apply-disabled" id="rpApplyGroup" disabled>Aplicar</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="history-social-grid">
+          <div class="history-row">
+            <div class="history-side">
+              <div class="trend-card trend-card--total" id="trendTotalCard">
+                <div class="trend-card__info">
+                  <p class="trend-card__label">Registros totales</p>
+                  <div class="trend-card__value" id="trendTotalValue">—</div>
+                  <p class="trend-card__delta" id="trendTotalDelta" data-trend="flat">0%</p>
+                  <p class="trend-card__hint" id="trendTotalHint">vs período anterior</p>
+                </div>
+                <div class="trend-card__spark">
+                  <canvas id="trendTotalSpark" height="80" aria-hidden="true"></canvas>
+                </div>
+              </div>
+
+              <div class="trend-card trend-card--sales" id="trendSalesCard">
+                <div class="trend-card__info">
+                  <p class="trend-card__label">Ventas (Estado)</p>
+                  <div class="trend-card__value" id="trendSalesValue">—</div>
+                  <p class="trend-card__delta" id="trendSalesDelta" data-trend="flat">0%</p>
+                  <p class="trend-card__hint" id="trendSalesHint">vs período anterior</p>
+                </div>
+                <div class="trend-card__spark">
+                  <canvas id="trendSalesSpark" height="80" aria-hidden="true"></canvas>
+                </div>
+              </div>
+
+              <div class="trend-card trend-card--channel" id="trendChannelCard">
+                <div class="trend-card__info">
+                  <p class="trend-card__label">Canal líder (ventas)</p>
+                  <div class="trend-card__channel" id="trendChannelName">—</div>
+                  <div class="trend-card__value" id="trendChannelValue">0</div>
+                  <p class="trend-card__delta" id="trendChannelDelta" data-trend="flat">0</p>
+                  <p class="trend-card__hint" id="trendChannelHint">Sin comparación</p>
+                </div>
+                <div class="trend-card__spark">
+                  <canvas id="trendChannelSpark" height="80" aria-hidden="true"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-card" id="histCard">
+              <div class="chart-head">
+                <h4>Historial de registros</h4>
+                <div
+                  id="toggleHistLabels"
+                  class="chart-switch"
+                  role="switch"
+                  aria-checked="false"
+                  tabindex="0"
+                  data-on="false"
+                >
+                  Mostrar datos
+                </div>
+              </div>
+              <div class="chart-body">
+                <div class="chart-box">
+                  <canvas id="chartHist" class="bars"></canvas>
+                </div>
+                <div id="legendHist" class="legend"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="metrics-grid" id="metricsGrid">
+          <div class="chart-card metric" data-metric="canal">
+            <div class="chart-head">
+              <h4>Canal</h4>
+              <!-- Removed per-card seg-bar: now global controls apply -->
+            </div>
+            <div class="donut-wrap">
+              <div class="donut-box">
+                <canvas id="chartCanal" class="donut"></canvas>
+              </div>
+              <div id="legendCanal" class="legend"></div>
+            </div>
+          </div>
+
+          <div class="chart-card metric" data-metric="campa&ntilde;a">
+            <div class="chart-head">
+              <h4>Campa&ntilde;a</h4>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut-box">
+                <canvas id="chartCampana" class="donut"></canvas>
+              </div>
+              <div id="legendCampana" class="legend"></div>
+            </div>
+          </div>
+
+          <div class="chart-card metric" data-metric="interes">
+            <div class="chart-head">
+              <h4>Inter&eacute;s de compra</h4>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut-box">
+                <canvas id="chartInteres" class="donut"></canvas>
+              </div>
+              <div id="legendInteres" class="legend"></div>
+            </div>
+          </div>
+
+          <div class="chart-card metric" data-metric="estado">
+            <div class="chart-head">
+              <h4>Estado</h4>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut-box">
+                <canvas id="chartEstado" class="donut"></canvas>
+              </div>
+              <div id="legendEstado" class="legend"></div>
+            </div>
+          </div>
+
+          <div class="chart-card metric" data-metric="registrado">
+            <div class="chart-head">
+              <h4>Registrado</h4>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut-box">
+                <canvas id="chartRegistrado" class="donut"></canvas>
+              </div>
+              <div id="legendRegistrado" class="legend"></div>
+            </div>
+          </div>
+
+          <div class="chart-card metric" data-metric="registro">
+            <div class="chart-head">
+              <h4>Registro</h4>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut-box">
+                <canvas id="chartRegistro" class="donut"></canvas>
+              </div>
+              <div id="legendRegistro" class="legend"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card social-metric" id="socialCard">
+          <div class="chart-head">
+            <h4>Redes sociales</h4>
+          </div>
+          <div class="social-chart social-chart-single">
+            <div class="social-chart-graph" id="socialChartGraph">
+              <canvas id="chartSocial" class="social-bars"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-note" id="lastUpdate">&mdash;</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+    <!-- JS de tu app -->
+    <script src="js/common.js" defer></script>
+    <script src="js/transition.js" defer></script>
+    <script src="js/metrics.js" defer></script>
+  </body>
+</html>
+
+
+
