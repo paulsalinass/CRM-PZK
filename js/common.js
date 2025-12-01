@@ -16,10 +16,10 @@
 
 // Common utilities shared by both pages (no Chart.js here)
 (function () {
-  const SHEET_ID = "1O1xGYAKN-5IsaHTcP6aYHbT1jT3hKIAOhXz2HBpAD7o";
+  const SHEET_ID = "1K9j2y7qYK0LlmQMrFkVKItmGHoZDr3xXrkI3-S__jpk";
   const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
   const UPDATE_ENDPOINT =
-    "https://script.google.com/macros/s/AKfycbxuudD74Tfx9ndLUfyBBiC5mtWaH5ILAQb0kOVW4kLO8w9GO3oWTnBP7sCPNVAxMDcZlQ/exec";
+    "https://script.google.com/macros/s/AKfycbzJmi9WsZVzvje77gUW6aGGYZzR6NKfBpTRi9vOzwmlgb2NCNyxzutIaA_M9eKHfa5M/exec";
 
   const OPTIONS_REGISTRO = ["Nuevo", "Gestionado"];
   const OPTIONS_ESTADO = [
