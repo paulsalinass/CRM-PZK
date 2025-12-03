@@ -223,6 +223,11 @@
     return ta;
   }
 
+  const escapeSelector = (str) => {
+    if (typeof CSS !== "undefined" && CSS.escape) return CSS.escape(str);
+    return String(str).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+  };
+
   function renderTableChunk(append, options = {}) {
     const { maintainScroll = false } = options;
     const tbody = document.querySelector("#dataTable tbody");
@@ -230,11 +235,22 @@
     const mobileView = isMobileViewport();
     const previousShown = shownCount;
     let prevScrollTop = 0;
-    let prevScrollHeight = 0;
+    let prevScrollRange = 0;
+    let scrollAnchor = null;
 
     if (maintainScroll && wrap) {
       prevScrollTop = wrap.scrollTop;
-      prevScrollHeight = wrap.scrollHeight;
+      prevScrollRange = Math.max(1, wrap.scrollHeight - wrap.clientHeight);
+      const rows = Array.from(tbody?.querySelectorAll("tr") || []);
+      const anchorRow = rows.find(
+        (tr) => tr.offsetTop + tr.offsetHeight > wrap.scrollTop
+      );
+      if (anchorRow) {
+        scrollAnchor = {
+          key: anchorRow.dataset.rowKey || null,
+          offset: wrap.scrollTop - anchorRow.offsetTop,
+        };
+      }
     }
     if (!append) {
       tbody.innerHTML = "";
@@ -257,6 +273,7 @@
     for (let i = start; i < end; i++) {
       const r = filteredRows[i],
         tr = document.createElement("tr");
+      tr.dataset.rowKey = String(r._idx);
       tr.classList.add("tr-anim");
       const outDate = Number.isNaN(r._ts)
         ? r["Hora de registro"] || ""
@@ -366,12 +383,37 @@
       shownCount < filteredRows.length ? "inline-block" : "none";
     updateChips();
     isScrollLoading = false;
-    if (!append && maintainScroll && mobileView && previousShown > shownCount) {
+    if (!append && maintainScroll && previousShown > shownCount) {
       const target = Math.min(previousShown, filteredRows.length);
       while (shownCount < target) {
         renderTableChunk(true, { maintainScroll: true });
       }
       return;
+    }
+    if (maintainScroll && wrap) {
+      let applied = false;
+      if (scrollAnchor?.key) {
+        const target = tbody.querySelector(
+          `tr[data-row-key="${CSS.escape(scrollAnchor.key)}"]`
+        );
+        if (target) {
+          const nextTop = target.offsetTop + (scrollAnchor.offset || 0);
+          wrap.scrollTop = Math.max(0, nextTop);
+          applied = true;
+        }
+      }
+      if (!applied) {
+        const maxScrollable = Math.max(
+          0,
+          wrap.scrollHeight - wrap.clientHeight
+        );
+        const ratio = prevScrollRange ? prevScrollTop / prevScrollRange : 0;
+        const nextScrollTop = Math.min(
+          maxScrollable,
+          Math.max(0, Math.round(ratio * maxScrollable))
+        );
+        wrap.scrollTop = nextScrollTop;
+      }
     }
     if (!append && !mobileView) window.requestAnimationFrame(maybeAutoFill);
   }
@@ -502,7 +544,8 @@
     el.style.display = "inline-block";
   }
 
-  function applyFilters() {
+  function applyFilters(options = {}) {
+    const { maintainScroll = false } = options;
     const vSearch = C.norm(document.getElementById("fSearch").value);
     const vCanal = document.getElementById("fCanal").value.trim(),
       vCamp = document.getElementById("fCamp").value.trim(),
@@ -537,7 +580,7 @@
       });
 
     shownCount = 0;
-    renderTableChunk(false);
+    renderTableChunk(false, { maintainScroll });
     updateChips();
   }
 
@@ -549,6 +592,29 @@
     listRange = null;
     updateToolbarRangePill();
     applyFilters();
+  }
+
+  function captureFiltersState() {
+    return {
+      search: document.getElementById("fSearch")?.value || "",
+      canal: document.getElementById("fCanal")?.value || "",
+      camp: document.getElementById("fCamp")?.value || "",
+      interes: document.getElementById("fInteres")?.value || "",
+      range: listRange ? { ...listRange } : null,
+    };
+  }
+
+  function restoreFiltersState(state) {
+    if (!state) return;
+    document.getElementById("fSearch").value = state.search || "";
+    if (state.canal !== undefined)
+      document.getElementById("fCanal").value = state.canal;
+    if (state.camp !== undefined)
+      document.getElementById("fCamp").value = state.camp;
+    if (state.interes !== undefined)
+      document.getElementById("fInteres").value = state.interes;
+    listRange = state.range ? { ...state.range } : null;
+    updateToolbarRangePill();
   }
 
   // ======== RANGO TOOLBAR (modal propio) ========
@@ -762,9 +828,13 @@
     });
   }
 
+  let initialLoadDone = false;
+
   async function loadData(options) {
     const opts = options instanceof Event ? {} : options ?? {};
-    const { preserveScroll = false } = opts;
+    const preserveScroll = opts.preserveScroll ?? false;
+    const preserveFilters = opts.preserveFilters ?? initialLoadDone;
+    const savedFilters = preserveFilters ? captureFiltersState() : null;
     const btn = document.getElementById("refreshBtn");
     btn.disabled = true;
     btn.textContent = "Cargando\u2026";
@@ -821,13 +891,14 @@
       populateSelect("fCamp", uniqueValues(allRows, "Campa\u00F1a"));
       populateSelect("fInteres", uniqueValues(allRows, "Interes"));
 
-      listRange = last7DaysRange();
-      updateToolbarRangePill();
+      if (savedFilters) {
+        restoreFiltersState(savedFilters);
+      } else {
+        listRange = last7DaysRange();
+        updateToolbarRangePill();
+      }
 
-      filteredRows = allRows.slice();
-      shownCount = 0;
-      renderTableChunk(false, { maintainScroll: preserveScroll });
-      updateChips();
+      applyFilters({ maintainScroll: preserveScroll && initialLoadDone });
       setLastUpdate();
       if (C.isFileOrigin())
         document.getElementById("hostWarn").style.display = "block";
@@ -837,6 +908,7 @@
     } finally {
       btn.disabled = false;
       btn.textContent = "Actualizar datos \u21BB";
+      initialLoadDone = true;
     }
   }
 
@@ -880,7 +952,7 @@
         if (document.hidden) return;
         const refreshBtn = document.getElementById("refreshBtn");
         if (refreshBtn?.disabled) return;
-        loadData({ preserveScroll: true });
+        loadData({ preserveScroll: true, preserveFilters: true });
       }, 60_000);
     });
   });
